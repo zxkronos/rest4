@@ -21,7 +21,7 @@ router.delete('/', usuariosDelete );
 
 router.patch('/', usuariosPatch );
 
-router.post('/articuloml', articuloml );
+router.get('/articuloml/:mlc', articuloml );
 
 
 

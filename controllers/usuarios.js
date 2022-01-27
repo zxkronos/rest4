@@ -53,8 +53,8 @@ const articuloml =  async (req, res = response) => {
 
 
 
-    console.log(req.body.mlc);
-    mlc = req.body.mlc;
+    // console.log(req.body.mlc);
+    const { mlc } = req.params;
     let getItem = 'https://api.mercadolibre.com/items/'
     // const config = {
     //     headers: { Authorization: `Bearer ${tokens[0].token}` }
