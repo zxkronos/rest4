@@ -60,6 +60,7 @@ const articuloml =  async (req, res = response) => {
     //     headers: { Authorization: `Bearer ${tokens[0].token}` }
     // };
 
+
     testMouseM170Catalogo = 'MLC605369288'
     testMouseM170Normal = 'MLC487543221'
     testMlc = testMouseM170Normal;
@@ -68,6 +69,24 @@ const articuloml =  async (req, res = response) => {
     const resp_item = await axios.get(getItem);
 
     // console.log(resp_item.data);
+    for (atrib in resp_item.data.attributes) {
+        // console.log('atrib');
+        if (resp_item.data.attributes[atrib].id == 'SELLER_SKU') { //sacara el sku y gtin en caso que no tenga variaciones
+            sku = resp_item.data.attributes[atrib].value_name;
+        }
+        if (resp_item.data.attributes[atrib].id == 'BRAND') {
+            marca = resp_item.data.attributes[atrib].value_name;
+        }
+        
+        if(resp_item.data.attributes[atrib].id == 'MODEL'){
+            modelo = resp_item.data.attributes[atrib].value_name;
+        }
+        if(resp_item.data.attributes[atrib].id == 'GTIN'){ //codigo universal de producto
+            gtin1 = resp_item.data.attributes[atrib].value_name;
+        }
+        
+    }
+
     res.json({
         'id': resp_item.data.id,
         'titulo': resp_item.data.title,
