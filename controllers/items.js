@@ -107,7 +107,7 @@ const buscarSku =  async (req, res = response) => {
      
     const resp_item = await axios.get(getItem);
 
-    let sku = '';
+    // let sku = '';
     let gtin = '';
 
     // console.log(resp_item.data);
