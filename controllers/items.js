@@ -17,8 +17,15 @@ const itemGet =  async (req, res = response) => {
     testMlc = testMouseM170Normal;
     getItem += mlc+'?include_attributes=all' //item con variaciones
      
-    const resp_item = await axios.get(getItem);
-
+    const resp_item = await axios.get(getItem).
+    catch(err => {
+        // console.log('hola');
+        console.log(err.response.data);
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+    
     let sku = '';
     let gtin = '';
 
