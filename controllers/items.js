@@ -16,16 +16,18 @@ const itemGet =  async (req, res = response) => {
     testMouseM170Normal = 'MLC487543221'
     testMlc = testMouseM170Normal;
     getItem += mlc+'?include_attributes=all' //item con variaciones
-     
+    estatus = 200; 
     const resp_item = await axios.get(getItem).
     catch(err => {
         // console.log('hola');
-        console.log(err.response.data);
+        // console.log(err.response.data);
+        estatus = 404;
         res.status(404).json({
             msg: err.response.data
         });
+        
     });
-    
+    if (estatus == 200) {
     let sku = '';
     let gtin = '';
 
@@ -93,6 +95,7 @@ const itemGet =  async (req, res = response) => {
         'cantidad': resp_item.data.available_quantity
         // 'fotos': resp_item.data.pictures
     });
+}
 }
 
 
