@@ -127,6 +127,7 @@ const buscarEnvio = async (req, res = response) => {
     let articulo ={
         'id': '',
         'descripcion': '',
+        'cantidad': '',
         'precio': '',
         'thumbnail': '',
         'pictures': [],
@@ -134,10 +135,11 @@ const buscarEnvio = async (req, res = response) => {
 
     };
     for (item in resp_envio.data.shipping_items) {
-
+        console.log(item);
         articulo.id = resp_envio.data.shipping_items[item].id;
+        console.log(articulo.id);
         articulo.descripcion = resp_envio.data.shipping_items[item].description;
-        
+        articulo.cantidad = resp_envio.data.shipping_items[item].quantity;
        
         const resp_item = await axios.get(getItem+resp_envio.data.shipping_items[item].id,config).
         catch(err => {
@@ -159,9 +161,19 @@ const buscarEnvio = async (req, res = response) => {
         articulo.thumbnail = resp_item.data.secure_thumbnail;
         articulo.pictures = pictures_url;
         articulo.condition = resp_item.data.condition;
-        items.push(articulo);
+        items.push({
+            'id': articulo.id,
+            'descripcion': articulo.descripcion,
+            'cantidad': articulo.cantidad,
+            'precio': articulo.precio,
+            'thumbnail': articulo.thumbnail,
+            'pictures': articulo.pictures,
+            'condition': articulo.condition,
+        }
+        );
+        
     }
-
+    
     if (estatus == 200) {
         res.json({
             'id': resp_envio.data.id,
