@@ -98,6 +98,113 @@ const itemGet =  async (req, res = response) => {
 }
 }
 
+const buscarEnvio = async (req, res = response) => {
+
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    const { id } = req.params;
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+    getShipment = 'https://api.mercadolibre.com/shipments/'+id
+    estatus = 200;
+    const resp_envio = await axios.get(getShipment,config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+        
+    });
+    let getItem = 'https://api.mercadolibre.com/items/';
+    let items = []
+    let pictures_url = []
+    let picture = {
+        'url': ''
+    }
+    let articulo ={
+        'id': '',
+        'descripcion': '',
+        'precio': '',
+        'thumbnail': '',
+        'pictures': [],
+        'condition': '',
+
+    };
+    for (item in resp_envio.data.shipping_items) {
+
+        articulo.id = resp_envio.data.shipping_items[item].id;
+        articulo.descripcion = resp_envio.data.shipping_items[item].description;
+        
+       
+        const resp_item = await axios.get(getItem+resp_envio.data.shipping_items[item].id,config).
+        catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+        
+        });
+        for (picture in resp_item.data.pictures) {
+            picture = {
+                'url': resp_item.data.pictures[picture].secure_url
+            }
+            pictures_url.push(picture);
+        }
+        articulo.precio = resp_item.data.price;
+        articulo.thumbnail = resp_item.data.secure_thumbnail;
+        articulo.pictures = pictures_url;
+        articulo.condition = resp_item.data.condition;
+        items.push(articulo);
+    }
+
+    if (estatus == 200) {
+        res.json({
+            'id': resp_envio.data.id,
+            'estado': resp_envio.data.status,
+            'orden': resp_envio.data.order_id,
+            'recibe': resp_envio.data.receiver_address.receiver_name,
+            'fecha': resp_envio.data.date_created,
+            'direccion': resp_envio.data.receiver_address.address_line,
+            'comentario': resp_envio.data.receiver_address.comment,
+            'envia': resp_envio.data.tracking_method,
+            'costo_orden': resp_envio.data.order_cost,
+            'items': items
+        });
+    }
+    // getVenta ='https://api.mercadolibre.com/orders/'+resp_envio.data.order_id; 
+
+    // const resp_venta = await axios.get(getVenta,config).
+    // catch(err => {
+    //     // console.log('hola');
+    //     // console.log(err.response.data);
+    //     estatus = 404;
+    //     res.status(404).json({
+    //         msg: err.response.data
+    //     });
+        
+    // });
+    // let getItem = 'https://api.mercadolibre.com/items/'+resp_venta.data.order_items[0].item.id;
+
+    // const resp_art = await axios.get(getItem,config).
+    // catch(err => {
+    //     // console.log('hola');
+    //     // console.log(err.response.data);
+    //     estatus = 404;
+    //     res.status(404).json({
+    //         msg: err.response.data
+    //     });
+        
+    // });
+
+
+
+}
+
 
 
 const buscarSku =  async (req, res = response) => {
@@ -108,6 +215,7 @@ const buscarSku =  async (req, res = response) => {
     // const config = {
     //     headers: { Authorization: `Bearer ${tokens[0].token}` }
     // };
+    
 
 
     testMouseM170Catalogo = 'MLC605369288'
@@ -191,5 +299,6 @@ const buscarSku =  async (req, res = response) => {
 
 
 module.exports = {
-    itemGet
+    itemGet,
+    buscarEnvio
 }

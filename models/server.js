@@ -8,6 +8,7 @@ class Server {
         this.port = process.env.PORT;
         this.usuariosPath = '/api/usuarios';
         this.itemsPath = '/api/items';
+        this.meliPath = '/api/meli';
 
         // Middlewares
         this.middlewares();
@@ -32,6 +33,7 @@ class Server {
     routes() {
         this.app.use( this.usuariosPath, require('../routes/usuarios'));
         this.app.use( this.itemsPath, require('../routes/items'));
+        this.app.use( this.meliPath, require('../routes/token'));
     }
 
     listen() {
