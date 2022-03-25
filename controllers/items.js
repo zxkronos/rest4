@@ -134,10 +134,10 @@ const buscarEnvio = async (req, res = response) => {
         'condition': '',
 
     };
+    if (estatus == 200) {
     for (item in resp_envio.data.shipping_items) {
-        console.log(item);
+        
         articulo.id = resp_envio.data.shipping_items[item].id;
-        console.log(articulo.id);
         articulo.descripcion = resp_envio.data.shipping_items[item].description;
         articulo.cantidad = resp_envio.data.shipping_items[item].quantity;
        
@@ -174,7 +174,7 @@ const buscarEnvio = async (req, res = response) => {
         
     }
     
-    if (estatus == 200) {
+    
         res.json({
             'id': resp_envio.data.id,
             'estado': resp_envio.data.status,
