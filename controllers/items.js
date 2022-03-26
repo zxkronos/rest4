@@ -127,6 +127,7 @@ const buscarEnvio = async (req, res = response) => {
     let articulo ={
         'id': '',
         'descripcion': '',
+        'modelo': '',
         'cantidad': '',
         'precio': '',
         'thumbnail': '',
@@ -161,9 +162,19 @@ const buscarEnvio = async (req, res = response) => {
         articulo.thumbnail = resp_item.data.secure_thumbnail;
         articulo.pictures = pictures_url;
         articulo.condition = resp_item.data.condition;
+
+        for (atrib in resp_item.data.attributes) {
+            
+            if(resp_item.data.attributes[atrib].id == 'MODEL'){
+                articulo.modelo = resp_item.data.attributes[atrib].value_name;
+            }
+ 
+        }
+
         items.push({
             'id': articulo.id,
             'descripcion': articulo.descripcion,
+            'modelo': articulo.modelo,
             'cantidad': articulo.cantidad,
             'precio': articulo.precio,
             'thumbnail': articulo.thumbnail,
@@ -174,16 +185,33 @@ const buscarEnvio = async (req, res = response) => {
         
     }
     
+        if (resp_envio.data.tracking_method == null){
+            envia = 'Flex'
+        }else{
+            envia = 'Colecta'
+        }
+        if (resp_envio.data.receiver_address.comment == null){
+            detalle_direccion = ''
+        }else{
+            detalle_direccion = resp_envio.data.receiver_address.comment
+        }
+        if (resp_envio.data.substatus== null){
+            subestado = ''
+        }else{
+            subestado = resp_envio.data.substatus
+        }
+
     
         res.json({
             'id': resp_envio.data.id,
             'estado': resp_envio.data.status,
+            'subestado': subestado,
             'orden': resp_envio.data.order_id,
             'recibe': resp_envio.data.receiver_address.receiver_name,
             'fecha': resp_envio.data.date_created,
             'direccion': resp_envio.data.receiver_address.address_line,
-            'comentario': resp_envio.data.receiver_address.comment,
-            'envia': resp_envio.data.tracking_method,
+            'detalle_direccion':detalle_direccion,
+            'envia': envia,
             'costo_orden': resp_envio.data.order_cost,
             'items': items
         });
