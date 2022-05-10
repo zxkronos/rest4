@@ -4,6 +4,12 @@ const axios = require('axios');
 
 const itemGet =  async (req, res = response) => {
 
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    let pictures_url = []   
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
 
     const { mlc } = req.params;
     let getItem = 'https://api.mercadolibre.com/items/'
@@ -17,7 +23,7 @@ const itemGet =  async (req, res = response) => {
     testMlc = testMouseM170Normal;
     getItem += mlc+'?include_attributes=all' //item con variaciones
     estatus = 200; 
-    const resp_item = await axios.get(getItem).
+    const resp_item = await axios.get(getItem, config).
     catch(err => {
         // console.log('hola');
         // console.log(err.response.data);
@@ -27,11 +33,23 @@ const itemGet =  async (req, res = response) => {
         });
         
     });
+
+    
+    for (picture in resp_item.data.pictures) {
+        picture = {
+            'url': resp_item.data.pictures[picture].secure_url
+        }
+        pictures_url.push(picture);
+    }
+
     if (estatus == 200) {
     let sku = '';
     let gtin = '';
+    let color = '';
+    let catalog_id = '';
+    // let fotos_var = [];
 
-    // console.log(resp_item.data);
+    //  sin variaciones, entran también publicaciones en catalogo
     for (atrib in resp_item.data.attributes) {
         // console.log('atrib');
         if (resp_item.data.attributes[atrib].id == 'SELLER_SKU') { //sacara el sku y gtin en caso que no tenga variaciones
@@ -47,38 +65,69 @@ const itemGet =  async (req, res = response) => {
         if(resp_item.data.attributes[atrib].id == 'GTIN'){ //codigo universal de producto
             gtin = resp_item.data.attributes[atrib].value_name;
         }
+        if(resp_item.data.attributes[atrib].id == 'COLOR'){
+            color = resp_item.data.attributes[atrib].value_name;
+        }
+
         
     }
 
+    if(resp_item.data.item_relations.length > 0){
+        console.log('in en sin variacion');
+        catalog_id = resp_item.data.item_relations[0].id;
+    }
 
 
-    let getCategoria = 'https://api.mercadolibre.com/categories/'
-    getCategoria += resp_item.data.category_id;
-    let resp_cat = await axios.get(getCategoria);
+    // let getCategoria = 'https://api.mercadolibre.com/categories/'
+    // getCategoria += resp_item.data.category_id;
+    // let resp_cat = await axios.get(getCategoria);
 
     if (resp_item.data.variations.length > 0) {
         
         
         
         id_variacion = resp_item.data.variations[0].id;
-        color = resp_item.data.variations[0].attribute_combinations[0].value_name;   
-        fotos_var = [];
+        // color = resp_item.data.variations[0].attribute_combinations[0].value_name;   
+        
         cantidad = resp_item.data.variations[0].available_quantity;
         for(atrib in resp_item.data.variations[0].attributes){
             if(resp_item.data.variations[0].attributes[atrib].id == 'SELLER_SKU'){
 
                 sku = resp_item.data.variations[0].attributes[atrib].value_name; 
-            }
-            if(resp_item.data.variations[0].attributes[atrib].id == 'GTIN'){
+            }else if(resp_item.data.variations[0].attributes[atrib].id == 'GTIN'){
 
                 gtin = resp_item.data.variations[0].attributes[atrib].value_name; 
             }
+            else if(resp_item.data.variations[0].attributes[atrib].id == 'MAIN_COLOR'){
+
+                color = resp_item.data.variations[0].attributes[atrib].value_name; 
+            }
+            else if(resp_item.data.variations[0].attributes[atrib].id == 'COLOR'){
+
+                color = resp_item.data.variations[0].attributes[atrib].value_name; 
+            }
+            
             
         }
-        for (picture in resp_item.data.variations[0].picture_ids) {
-
-            fotos_var.push(resp_item.data.variations[0].picture_ids[picture]);
+        
+        if (resp_item.data.variations[0].catalog_product_id){
+            catalog_id = resp_item.data.variations[0].catalog_product_id;
         }
+
+        // for(atrib in resp_item.data.variations[0].attribute_combinations){
+        //     if(resp_item.data.variations[0].attribute_combinations[atrib].id == 'COLOR'){
+
+        //         color = resp_item.data.variations[0].attribute_combinations[atrib].value_name; 
+        //     }
+        // }
+        
+        
+
+
+        // for (picture in resp_item.data.variations[0].picture_ids) {
+
+        //     fotos_var.push(resp_item.data.variations[0].picture_ids[picture]);
+        // }
                       
     }
 
@@ -91,8 +140,18 @@ const itemGet =  async (req, res = response) => {
         'marca': marca,
         'modelo': modelo,
         'gtin': gtin,
-        'categoria': resp_cat.data.name,
-        'cantidad': resp_item.data.available_quantity
+        'categoria': resp_item.data.category_id,
+        'cantidad': resp_item.data.available_quantity,
+        'precio': resp_item.data.price,
+        'color': color,
+        'fecha_creacion': resp_item.data.date_created,
+        'fecha_actualizacion': resp_item.data.last_updated,
+        'estatus': resp_item.data.status,
+        'condicion': resp_item.data.condition,
+        'catalog_id': catalog_id,
+        'pictures': pictures_url,
+        
+
         // 'fotos': resp_item.data.pictures
     });
 }
@@ -170,6 +229,8 @@ const buscarEnvio = async (req, res = response) => {
             }
  
         }
+        
+        console.log('articulo model: '+articulo.modelo);
 
         items.push({
             'id': articulo.id,
@@ -244,7 +305,16 @@ const buscarEnvio = async (req, res = response) => {
 
 
 }
+const prueba = async (req, res = response) => {
 
+    await axios.post('https://prod-08.brazilsouth.logic.azure.com:443/workflows/875c139c7b944307969236128033538d/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5bC0c2LhWPY_UfjylxKfS7rPjRq7zwr76i7nRE5fcpc', 
+    {
+        'id': 'chao'
+    })
+    res.json({
+        'id': 'hola'
+    });
+}
 
 
 const buscarSku =  async (req, res = response) => {
@@ -267,7 +337,7 @@ const buscarSku =  async (req, res = response) => {
 
     // let sku = '';
     let gtin = '';
-
+    let modelo = '';
     // console.log(resp_item.data);
     for (atrib in resp_item.data.attributes) {
         // console.log('atrib');
@@ -288,7 +358,7 @@ const buscarSku =  async (req, res = response) => {
     }
 
 
-
+    console.log(modelo);
     let getCategoria = 'https://api.mercadolibre.com/categories/'
     getCategoria += resp_item.data.category_id;
     let resp_cat = await axios.get(getCategoria);
@@ -340,5 +410,6 @@ const buscarSku =  async (req, res = response) => {
 
 module.exports = {
     itemGet,
-    buscarEnvio
+    buscarEnvio,
+    prueba
 }
