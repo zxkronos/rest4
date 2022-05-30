@@ -35,46 +35,39 @@ const itemGet =  async (req, res = response) => {
     });
 
     
-    for (picture in resp_item.data.pictures) {
-        picture = {
-            'url': resp_item.data.pictures[picture].secure_url
-        }
-        pictures_url.push(picture);
-    }
+    
 
     if (estatus == 200) {
     let sku = '';
     let gtin = '';
     let color = '';
     let catalog_id = '';
+    let tieneVariacion =false;
+    let variaciones = []
+    let tipo_envio = '';
     // let fotos_var = [];
 
     //  sin variaciones, entran también publicaciones en catalogo
-    for (atrib in resp_item.data.attributes) {
-        // console.log('atrib');
-        if (resp_item.data.attributes[atrib].id == 'SELLER_SKU') { //sacara el sku y gtin en caso que no tenga variaciones
-            sku = resp_item.data.attributes[atrib].value_name;
-        }
-        if (resp_item.data.attributes[atrib].id == 'BRAND') {
-            marca = resp_item.data.attributes[atrib].value_name;
-        }
-        
-        if(resp_item.data.attributes[atrib].id == 'MODEL'){
-            modelo = resp_item.data.attributes[atrib].value_name;
-        }
-        if(resp_item.data.attributes[atrib].id == 'GTIN'){ //codigo universal de producto
-            gtin = resp_item.data.attributes[atrib].value_name;
-        }
-        if(resp_item.data.attributes[atrib].id == 'COLOR'){
-            color = resp_item.data.attributes[atrib].value_name;
-        }
-
-        
-    }
+    
 
     if(resp_item.data.item_relations.length > 0){
-        console.log('in en sin variacion');
+        // console.log('in en sin variacion');
         catalog_id = resp_item.data.item_relations[0].id;
+    }
+    for (tag in resp_item.data.shipping.tags) {
+        if (resp_item.data.shipping.tags[tag] == 'self_service_out'){
+            tipo_envio = 'colecta';
+        }else if (resp_item.data.shipping.tags[tag] == 'self_service_in'){
+            tipo_envio = 'flex';
+        }
+    }
+    if (tipo_envio == ''){
+        for(sale_term in resp_item.data.sale_terms){
+            if (resp_item.data.sale_terms[sale_term].id == 'MANUFACTURING_TIME'){
+                disponibilidad_stock = resp_item.data.sale_terms[sale_term].value_name;
+            }
+        }
+        tipo_envio = 'colecta';
     }
 
 
@@ -83,52 +76,106 @@ const itemGet =  async (req, res = response) => {
     // let resp_cat = await axios.get(getCategoria);
 
     if (resp_item.data.variations.length > 0) {
+        tieneVariacion = true;
         
-        
-        
-        id_variacion = resp_item.data.variations[0].id;
-        // color = resp_item.data.variations[0].attribute_combinations[0].value_name;   
-        
-        cantidad = resp_item.data.variations[0].available_quantity;
-        for(atrib in resp_item.data.variations[0].attributes){
-            if(resp_item.data.variations[0].attributes[atrib].id == 'SELLER_SKU'){
 
-                sku = resp_item.data.variations[0].attributes[atrib].value_name; 
-            }else if(resp_item.data.variations[0].attributes[atrib].id == 'GTIN'){
-
-                gtin = resp_item.data.variations[0].attributes[atrib].value_name; 
-            }
-            else if(resp_item.data.variations[0].attributes[atrib].id == 'MAIN_COLOR'){
-
-                color = resp_item.data.variations[0].attributes[atrib].value_name; 
-            }
-            else if(resp_item.data.variations[0].attributes[atrib].id == 'COLOR'){
-
-                color = resp_item.data.variations[0].attributes[atrib].value_name; 
+        for (atrib in resp_item.data.attributes) {
+            
+            if (resp_item.data.attributes[atrib].id == 'BRAND') {
+                marca = resp_item.data.attributes[atrib].value_name;
             }
             
+            if(resp_item.data.attributes[atrib].id == 'MODEL'){
+                modelo = resp_item.data.attributes[atrib].value_name;
+            }
+           
+    
             
         }
+
+        for (variation in resp_item.data.variations) {
+            let pictures_url = []
+            id_variacion = resp_item.data.variations[variation].id;
+            // color = resp_item.data.variations[0].attribute_combinations[0].value_name;   
+            
+            cantidad = resp_item.data.variations[variation].available_quantity;
+            for(atrib in resp_item.data.variations[variation].attributes){
+                if(resp_item.data.variations[variation].attributes[atrib].id == 'SELLER_SKU'){
+
+                    sku = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }else if(resp_item.data.variations[variation].attributes[atrib].id == 'GTIN'){
+
+                    gtin = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }
+                else if(resp_item.data.variations[variation].attributes[atrib].id == 'MAIN_COLOR'){
+
+                    color = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }
+                else if(resp_item.data.variations[variation].attributes[atrib].id == 'COLOR'){
+
+                    color = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }
+                
+                
+            }
+            for (picture in resp_item.data.variations[variation].picture_ids) {
+                picture = resp_item.data.variations[variation].picture_ids[picture]
+                
+                pictures_url.push(picture);
+            }
         
-        if (resp_item.data.variations[0].catalog_product_id){
-            catalog_id = resp_item.data.variations[0].catalog_product_id;
+            
+            if (resp_item.data.variations[variation].catalog_product_id){
+                catalog_id = resp_item.data.variations[variation].catalog_product_id;
+            }
+
+            variaciones.push({
+                'id': id_variacion,
+                'sku': sku,
+                'gtin': gtin,
+                'color': color,
+                'cantidad': cantidad,
+                'catalog_id': catalog_id,
+                'pictures_url': pictures_url
+
+            });
+
+    }
+    sku ='';
+    gtin = '';
+    color = '';
+    catalog_id = '';
+    cantidad = '';
+    
+    }else{
+        tieneVariacion = false;
+        for (atrib in resp_item.data.attributes) {
+            // console.log('atrib');
+            if (resp_item.data.attributes[atrib].id == 'SELLER_SKU') { //sacara el sku y gtin en caso que no tenga variaciones
+                sku = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'BRAND') {
+                marca = resp_item.data.attributes[atrib].value_name;
+            }
+            
+            if(resp_item.data.attributes[atrib].id == 'MODEL'){
+                modelo = resp_item.data.attributes[atrib].value_name;
+            }
+            if(resp_item.data.attributes[atrib].id == 'GTIN'){ //codigo universal de producto
+                gtin = resp_item.data.attributes[atrib].value_name;
+            }
+            if(resp_item.data.attributes[atrib].id == 'COLOR'){
+                color = resp_item.data.attributes[atrib].value_name;
+            }
+    
+            
+        }
+        for (picture in resp_item.data.pictures) {
+            picture = resp_item.data.pictures[picture].id
+            
+            pictures_url.push(picture);
         }
 
-        // for(atrib in resp_item.data.variations[0].attribute_combinations){
-        //     if(resp_item.data.variations[0].attribute_combinations[atrib].id == 'COLOR'){
-
-        //         color = resp_item.data.variations[0].attribute_combinations[atrib].value_name; 
-        //     }
-        // }
-        
-        
-
-
-        // for (picture in resp_item.data.variations[0].picture_ids) {
-
-        //     fotos_var.push(resp_item.data.variations[0].picture_ids[picture]);
-        // }
-                      
     }
 
 
@@ -150,11 +197,307 @@ const itemGet =  async (req, res = response) => {
         'condicion': resp_item.data.condition,
         'catalog_id': catalog_id,
         'pictures': pictures_url,
-        
+        'variaciones': variaciones,
+        'tieneVariacion': tieneVariacion,
+        'catalog_listing': resp_item.data.catalog_listing, //si es catalogo o no
+        'disponibilidad_stock': disponibilidad_stock,
+        'tipo_envio': tipo_envio
 
         // 'fotos': resp_item.data.pictures
     });
 }
+}
+
+const modificarCantidad = async (req, res) => {
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    const { id} = req.params;
+    const { id_var,vars, available_quantity } = req.body;
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+
+    estatus = 200;
+    if(id_var){
+        
+        varsSplit = vars.split(',');
+        variations = [];
+        for (vari in varsSplit) {
+            
+            if (varsSplit[vari] == id_var){
+                
+                variations.push({
+                    'id': varsSplit[vari],
+                    'available_quantity': available_quantity
+                });
+    
+            }else{
+                variations.push({
+                    'id': varsSplit[vari]
+                });
+            }
+        }
+        body = {
+            "variations": variations
+        }
+
+    }else{
+
+        body = {
+            "available_quantity": available_quantity
+        }
+    }
+    
+
+    let resp_item = await axios.put(`https://api.mercadolibre.com/items/${id}`, body, config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+    
+    if (estatus == 200 && id_var){
+        for (vari in resp_item.data.variations) {
+            if (resp_item.data.variations[vari].id == id_var){
+                res.json({
+                    'available_quantity': resp_item.data.variations[vari].available_quantity
+                });
+            }
+        }
+    }else if (estatus == 200){
+
+        res.json({
+            'available_quantity': resp_item.data.available_quantity
+        });
+    }
+}
+
+const disponibilidadStock = async (req, res) => {
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    const {id} = req.params;
+    const { days } = req.body;
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+
+    estatus = 200;
+    //console.log(days);
+    disp = days+' días';
+    //console.log(disp);
+    body = {
+        "sale_terms": [{
+            "id": "MANUFACTURING_TIME",
+            "value_name": disp
+        }]
+
+    }
+    
+   // console.log(`https://api.mercadolibre.com/sites/MLC/shipping/selfservice/items/${id}`);
+
+    resp = await axios.put(`https://api.mercadolibre.com/items/${id}`,body, config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+    // console.log(resp_item); 
+    
+    if(estatus == 200){
+        res.json({
+            'resp': resp.data
+        });
+    }
+
+}
+
+const addstock = async (req, res) => {
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    const { id} = req.params;
+    const { id_var,vars, cantidad } = req.body;
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+
+    estatus = 200;
+    
+
+    let item_api = await axios.get(`https://api.mercadolibre.com/items/${id}`, config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+
+    if(id_var && estatus == 200){
+
+        for (vari in item_api.data.variations) {
+            if (item_api.data.variations[vari].id == id_var){
+                
+                cantidad_disp = item_api.data.variations[vari].available_quantity
+                
+            }
+        }
+        
+        
+        varsSplit = vars.split(',');
+        variations = [];
+        for (vari in varsSplit) {
+            
+            if (varsSplit[vari] == id_var){
+                
+                variations.push({
+                    'id': varsSplit[vari],
+                    'available_quantity': cantidad_disp + cantidad
+                });
+    
+            }else{
+                variations.push({
+                    'id': varsSplit[vari]
+                });
+            }
+        }
+
+        body = {
+            "variations": variations
+        }
+        console.log(body);
+
+    }else if (estatus == 200){
+        cant_disp = item_api.data.available_quantity
+
+        body = {
+            "available_quantity": cantidad + cant_disp
+        }
+    }
+    
+
+    let resp_item = await axios.put(`https://api.mercadolibre.com/items/${id}`, body, config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+    
+    if (estatus == 200 && id_var){
+        for (vari in resp_item.data.variations) {
+            if (resp_item.data.variations[vari].id == id_var){
+                res.json({
+                    'available_quantity': resp_item.data.variations[vari].available_quantity
+                });
+            }
+        }
+    }else if (estatus == 200){
+
+        res.json({
+            'available_quantity': resp_item.data.available_quantity
+        });
+    }
+}
+
+
+const modificarSku = async (req, res) => {
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    const { id} = req.params;
+    const { id_var,vars, sku } = req.body;
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+
+    estatus = 200;
+    if(id_var){
+        
+        varsSplit = vars.split(',');
+        variations = [];
+        for (vari in varsSplit) {
+            
+            if (varsSplit[vari] == id_var){
+                
+                variations.push({
+                    'id': varsSplit[vari],
+                    'attributes': [
+                        {
+                            'id': 'SELLER_SKU',
+                            'value_name': sku
+                        }
+                    ]
+                });
+    
+            }else{
+                variations.push({
+                    'id': varsSplit[vari]
+                });
+            }
+        }
+        body = {
+            "variations": variations
+        }
+
+    }else{
+
+        body = {
+            "attributes": [
+                {
+                    'id': 'SELLER_SKU',
+                    'value_name': sku
+                }
+
+            ]
+        }
+    }
+    
+
+    let resp_item = await axios.put(`https://api.mercadolibre.com/items/${id}`, body, config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+    
+    if (estatus == 200 && id_var){
+        for (vari in resp_item.data.variations) {
+            if (resp_item.data.variations[vari].id == id_var){
+                for(att in resp_item.data.variations[vari].attributes){
+                    if(resp_item.data.variations[vari].attributes[att].id == 'SELLER_SKU'){
+
+
+                        res.json({
+                            'sku': resp_item.data.variations[vari].attributes[att].value_name
+                        });
+                    }
+                }
+            }
+        }
+    }else if (estatus == 200){
+        
+        for(att in resp_item.data.attributes){
+            if(resp_item.data.attributes[att].id == 'SELLER_SKU'){
+
+
+                res.json({
+                    'sku': resp_item.data.attributes[att].value_name
+                });
+            }
+        }
+        
+    }
 }
 
 const buscarEnvio = async (req, res = response) => {
@@ -411,5 +754,9 @@ const buscarSku =  async (req, res = response) => {
 module.exports = {
     itemGet,
     buscarEnvio,
-    prueba
+    prueba,
+    modificarCantidad,
+    addstock,
+    modificarSku,
+    disponibilidadStock
 }
