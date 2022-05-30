@@ -45,6 +45,7 @@ const itemGet =  async (req, res = response) => {
     let tieneVariacion =false;
     let variaciones = []
     let tipo_envio = '';
+    let disponibilidad_stock = '';
     // let fotos_var = [];
 
     //  sin variaciones, entran también publicaciones en catalogo
