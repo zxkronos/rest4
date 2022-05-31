@@ -97,6 +97,7 @@ const itemGet =  async (req, res = response) => {
         for (variation in resp_item.data.variations) {
             let pictures_url = []
             id_variacion = resp_item.data.variations[variation].id;
+            id_variacion = id_variacion.toString();
             // color = resp_item.data.variations[0].attribute_combinations[0].value_name;   
             
             cantidad = resp_item.data.variations[variation].available_quantity;
