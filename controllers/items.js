@@ -184,7 +184,7 @@ const itemGet =  async (req, res = response) => {
     res.json({
         'id': resp_item.data.id,
         'titulo': resp_item.data.title,
-        'thumbnail': resp_item.data.thumbnail,
+        'thumbnail': resp_item.data.secure_thumbnail,
         'sku': sku,
         'marca': marca,
         'modelo': modelo,
