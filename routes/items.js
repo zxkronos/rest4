@@ -13,7 +13,7 @@ router.put('/stockupdate/:id', modificarCantidad );
 router.put('/addstock/:id', addstock );
 router.put('/updatesku/:id', modificarSku);
 router.put('/dispstock/:id', disponibilidadStock );
-router.get('/refrescar/:mlc', refrescarCantidad );
+router.post('/refrescar/:mlc', refrescarCantidad );
 
 
 module.exports = router;
