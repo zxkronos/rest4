@@ -1,7 +1,7 @@
 
 const { Router } = require('express');
 
-const { itemGet, buscarEnvio, prueba, modificarCantidad,addstock, modificarSku , disponibilidadStock} = require('../controllers/items');
+const { itemGet, buscarEnvio, prueba, modificarCantidad,addstock, modificarSku , disponibilidadStock, refrescarCantidad} = require('../controllers/items');
 
 const router = Router();
 
@@ -13,6 +13,7 @@ router.put('/stockupdate/:id', modificarCantidad );
 router.put('/addstock/:id', addstock );
 router.put('/updatesku/:id', modificarSku);
 router.put('/dispstock/:id', disponibilidadStock );
+router.get('/refrescar/:mlc', refrescarCantidad );
 
 
 module.exports = router;

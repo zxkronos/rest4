@@ -46,15 +46,13 @@ const itemGet =  async (req, res = response) => {
     let variaciones = []
     let tipo_envio = '';
     let disponibilidad_stock = '';
+    let item_relation = '';
     // let fotos_var = [];
 
     //  sin variaciones, entran también publicaciones en catalogo
     
 
-    if(resp_item.data.item_relations.length > 0){
-        // console.log('in en sin variacion');
-        catalog_id = resp_item.data.item_relations[0].id;
-    }
+    
     for (tag in resp_item.data.shipping.tags) {
         if (resp_item.data.shipping.tags[tag] == 'self_service_out'){
             tipo_envio = 'colecta';
@@ -126,7 +124,10 @@ const itemGet =  async (req, res = response) => {
                 pictures_url.push(picture);
             }
         
-            
+            if( resp_item.data.variations[variation].item_relations.length >0){
+                item_relation = resp_item.data.variations[variation].item_relations[0].id;
+            }
+
             if (resp_item.data.variations[variation].catalog_product_id){
                 catalog_id = resp_item.data.variations[variation].catalog_product_id;
             }
@@ -137,8 +138,9 @@ const itemGet =  async (req, res = response) => {
                 'gtin': gtin,
                 'color': color,
                 'cantidad': cantidad,
-                'catalog_id': catalog_id,
-                'pictures_url': pictures_url
+                'catalog_id': catalog_id, //id de la publicacion en catalogo de mercado libre
+                'pictures_url': pictures_url,
+                'item_relation': item_relation
 
             });
 
@@ -148,6 +150,7 @@ const itemGet =  async (req, res = response) => {
     color = '';
     catalog_id = '';
     cantidad = '';
+    
     
     }else{
         tieneVariacion = false;
@@ -172,6 +175,14 @@ const itemGet =  async (req, res = response) => {
     
             
         }
+        if (resp_item.data.catalog_product_id){
+            catalog_id = resp_item.data.catalog_product_id;
+        }
+        if(resp_item.data.item_relations.length > 0){
+            // console.log('in en sin variacion');
+            item_relation = resp_item.data.item_relations[0].id;
+        }
+
         for (picture in resp_item.data.pictures) {
             picture = resp_item.data.pictures[picture].id
             
@@ -203,12 +214,69 @@ const itemGet =  async (req, res = response) => {
         'tieneVariacion': tieneVariacion,
         'catalog_listing': resp_item.data.catalog_listing, //si es catalogo o no
         'disponibilidad_stock': disponibilidad_stock,
-        'tipo_envio': tipo_envio
+        'tipo_envio': tipo_envio,
+        'item_relation': item_relation
 
         // 'fotos': resp_item.data.pictures
     });
 }
 }
+
+const refrescarCantidad = async (req, res) => {
+
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+
+    const { mlc } = req.params;
+    let getItem = 'https://api.mercadolibre.com/items/'
+    // const config = {
+    //     headers: { Authorization: `Bearer ${tokens[0].token}` }
+    // };
+
+
+    getItem += mlc+'?include_attributes=all' //item con variaciones
+    
+    estatus = 200; 
+    const { id_var } = req.body;
+    const resp_item = await axios.get(getItem, config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+        
+    });
+
+    let cantidad = 0;
+    if (id_var){
+        for (variation in resp_item.data.variations) {
+            if (resp_item.data.variations[variation].id == id_var){
+                cantidad = resp_item.data.variations[variation].available_quantity;
+            }
+        }
+
+    }else{
+        cantidad = resp_item.data.available_quantity;
+    }
+    
+    
+
+    if (estatus == 200) {
+        res.json({
+            
+            'cantidad':cantidad
+            
+        });
+
+    }
+}
+
 
 const modificarCantidad = async (req, res) => {
     token = JSON.stringify(req.headers.token);
@@ -760,5 +828,6 @@ module.exports = {
     modificarCantidad,
     addstock,
     modificarSku,
-    disponibilidadStock
+    disponibilidadStock,
+    refrescarCantidad
 }
