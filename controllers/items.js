@@ -270,7 +270,8 @@ const refrescarCantidad = async (req, res) => {
     if (estatus == 200) {
         res.json({
             
-            'cantidad':cantidad
+            'cantidad':cantidad,
+            'estado': resp_item.data.status
             
         });
 
@@ -289,8 +290,12 @@ const modificarCantidad = async (req, res) => {
 
     estatus = 200;
     if(id_var){
-        
-        varsSplit = vars.split(',');
+        varsCopia = vars
+        if(vars.endsWith(',')){
+            varsCopia = vars.slice(0,-1);
+        }
+
+        varsSplit = varsCopia.split(',');
         variations = [];
         for (vari in varsSplit) {
             
@@ -328,19 +333,39 @@ const modificarCantidad = async (req, res) => {
             msg: err.response.data
         });
     });
+    body2 = {
+        "status": "active"
+    }
+
+    if (resp_item.data.status == 'paused') {
+        let resp2 = await axios.put(`https://api.mercadolibre.com/items/${id}`, body2, config).
+        catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+        estado = resp2.data.status; 
+    }else{
+        estado = resp_item.data.status;
+    }
     
     if (estatus == 200 && id_var){
         for (vari in resp_item.data.variations) {
             if (resp_item.data.variations[vari].id == id_var){
                 res.json({
-                    'available_quantity': resp_item.data.variations[vari].available_quantity
+                    'available_quantity': resp_item.data.variations[vari].available_quantity,
+                    'estado': estado
                 });
             }
         }
     }else if (estatus == 200){
 
         res.json({
-            'available_quantity': resp_item.data.available_quantity
+            'available_quantity': resp_item.data.available_quantity,
+            'estado': estado
         });
     }
 }
