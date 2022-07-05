@@ -595,6 +595,80 @@ const modificarSku = async (req, res) => {
     }
 }
 
+
+const modificarPrecio = async (req, res) => {
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    const { id} = req.params;
+    const { id_var,vars, price } = req.body;
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+
+    estatus = 200;
+    if(id_var){
+        
+        varsSplit = vars.split(',');
+        variations = [];
+        for (vari in varsSplit) {
+            
+            if (varsSplit[vari] == id_var){
+                
+                variations.push({
+                    'id': varsSplit[vari],
+                    'price': price
+                });
+    
+            }else{
+                variations.push({
+                    'id': varsSplit[vari]
+                });
+            }
+        }
+        body = {
+            "variations": variations
+        }
+
+    }else{
+
+        body = {
+
+            'price': price
+                
+
+        }
+    }
+    
+    
+    let resp_item = await axios.put(`https://api.mercadolibre.com/items/${id}`, body, config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+    
+    if (estatus == 200 && id_var){
+        
+        res.json({
+            'respuesta': 'ok con var'
+        });
+        
+    }else if (estatus == 200){
+        
+        res.json({
+            'respuesta': 'ok sin var'
+        });
+            
+        
+        
+    }
+}
+
+
+
 const buscarEnvio = async (req, res = response) => {
 
     token = JSON.stringify(req.headers.token);
@@ -854,5 +928,6 @@ module.exports = {
     addstock,
     modificarSku,
     disponibilidadStock,
-    refrescarCantidad
+    refrescarCantidad,
+    modificarPrecio
 }
