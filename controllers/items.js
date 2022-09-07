@@ -34,10 +34,15 @@ const itemGet =  async (req, res = response) => {
         
     });
 
-    
-    
+    if(resp_item.data.seller_id = 345930669){
+        userCorrecto = true
+    }else{
+        userCorrecto = false
+    }
+    console.log(resp_item.data);
 
-    if (estatus == 200) {
+    //esfalso = false
+    if (estatus == 200 && userCorrecto) {
     let sku = '';
     let gtin = '';
     let color = '';
@@ -218,6 +223,10 @@ const itemGet =  async (req, res = response) => {
         'item_relation': item_relation
 
         // 'fotos': resp_item.data.pictures
+    });
+}else{
+    res.status(404).json({
+        msg: 'usuario incorrecto'
     });
 }
 }
