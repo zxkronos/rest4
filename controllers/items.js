@@ -52,6 +52,7 @@ const itemGet =  async (req, res = response) => {
     let tipo_envio = '';
     let disponibilidad_stock = '';
     let item_relation = '';
+    let cantidad_vendida = 0;
     // let fotos_var = [];
 
     //  sin variaciones, entran también publicaciones en catalogo
@@ -101,6 +102,7 @@ const itemGet =  async (req, res = response) => {
             let pictures_url = []
             id_variacion = resp_item.data.variations[variation].id;
             id_variacion = id_variacion.toString();
+            cantidad_vendida = resp_item.data.variations[variation].sold_quantity;
             // color = resp_item.data.variations[0].attribute_combinations[0].value_name;   
             
             cantidad = resp_item.data.variations[variation].available_quantity;
@@ -123,6 +125,14 @@ const itemGet =  async (req, res = response) => {
                 
                 
             }
+            for(atrib in resp_item.data.variations[variation].attribute_combinations){
+                if(resp_item.data.variations[variation].attribute_combinations[atrib].id == 'COLOR'){
+                    color = resp_item.data.variations[variation].attribute_combinations[atrib].value_name;
+                }
+            }
+
+
+
             for (picture in resp_item.data.variations[variation].picture_ids) {
                 picture = resp_item.data.variations[variation].picture_ids[picture]
                 
