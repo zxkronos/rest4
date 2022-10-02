@@ -58,7 +58,8 @@ const itemGet =  async (req, res = response) => {
     //  sin variaciones, entran también publicaciones en catalogo
     
 
-    
+    cantidad_vendida= resp_item.data.sold_quantity;
+    console.log(cantidad_vendida);
     for (tag in resp_item.data.shipping.tags) {
         if (resp_item.data.shipping.tags[tag] == 'self_service_out'){
             tipo_envio = 'colecta';
@@ -147,6 +148,10 @@ const itemGet =  async (req, res = response) => {
                 catalog_id = resp_item.data.variations[variation].catalog_product_id;
             }
 
+            if(gtin == null){
+                gtin = ''
+            }
+
             variaciones.push({
                 'id': id_variacion,
                 'sku': sku,
@@ -190,6 +195,7 @@ const itemGet =  async (req, res = response) => {
     
             
         }
+        
         if (resp_item.data.catalog_product_id){
             catalog_id = resp_item.data.catalog_product_id;
         }
@@ -230,7 +236,8 @@ const itemGet =  async (req, res = response) => {
         'catalog_listing': resp_item.data.catalog_listing, //si es catalogo o no
         'disponibilidad_stock': disponibilidad_stock,
         'tipo_envio': tipo_envio,
-        'item_relation': item_relation
+        'item_relation': item_relation,
+        'sold_quantity': cantidad_vendida
 
         // 'fotos': resp_item.data.pictures
     });

@@ -48,7 +48,7 @@ const gettoken =  async (req, res = response) => {
             'clientId': "8554356626339314", // String | 
             'clientSecret': "pNVTD6W6Bb1052H8in0Jbim4f2sBr1qD", // String | 
             'redirectUri': 'https://mercadolibre.cl/', // String | 
-            'code': "TG-623553847c199b001b0870e0-345930669", // String | 
+            'code': "TG-632897677ccf6c0001529cfc-3459306690", // String | 
             //  TG-6069c2e7a79334000730a50f-345930669
             'refreshToken': "" // String | 
         };
@@ -87,6 +87,7 @@ const tokenrefresh =  async (req, res = response) => {
     llave = JSON.stringify(req.headers.llave);
     llave = llave.slice(1,-1);
     
+    console.log(process.env.REFRESH_TOKEN);
     if (llave == process.env.LLAVE){
         
         let opts = {
