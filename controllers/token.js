@@ -15,7 +15,7 @@ const getcode =  async (req, res = response) => {
     
         let responseType = "code"; // String | 
         let clientId = "8554356626339314"; // String | 
-        let redirectUri = "https://mercadolibre.cl/"; // String | 
+        let redirectUri = "https://pcprice.fly.dev"; // String | 
         apiInstance.auth(responseType, clientId, redirectUri, (error, data, response) => {
             if (error) {
                 console.error(error);
@@ -42,42 +42,80 @@ const gettoken =  async (req, res = response) => {
     llave = llave.slice(1,-1);
     
     if (llave == process.env.LLAVE){
-    
+        console.log(process.env.CODE)
         let opts = {
-            'grantType': "authorization_code", // String | 
-            'clientId': "8554356626339314", // String | 
-            'clientSecret': "pNVTD6W6Bb1052H8in0Jbim4f2sBr1qD", // String | 
-            'redirectUri': 'https://mercadolibre.cl/', // String | 
-            'code': "TG-632897677ccf6c0001529cfc-3459306690", // String | 
-            //  TG-6069c2e7a79334000730a50f-345930669
-            'refreshToken': "" // String | 
+            'grant_type': "authorization_code", // String | 
+            'client_id': process.env.CLIENTID, // String | 
+            'client_secret': process.env.CLIENTSECRET,
+            'code': process.env.CODE,
+            'redirect_uri':"https://pcprice.fly.dev" 
         };
-        
-        apiInstance.getToken(opts, (error, data, response) => {
-            if (error) {
-                console.error(error);
-                res.json(error);
-            } else {
-                console.log('API called successfully.');
-                resp = response.text;
-                let token = resp.slice(17, -155)
-                let tokemRefresh = resp.slice(207, -2)
+
+        const url = 'https://api.mercadolibre.com/oauth/token';
+  
+        const config = {
+          headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      };
+      
+     await axios.post(url, new URLSearchParams(opts).toString(), config)
+        .then((response) => {
+         
+        token = response.data.access_token;
+        token_refresh = response.data.token_refresh;
+        console.log('API called successfully.');
+        console.log(token_refresh)
+        console.log(response.data)    
     
-                res.json({
-                    'token': token,
-                    'refresh token': refreshToken
-                    // 'fotos': resp_item.data.pictures
-                });
-                // res.json(response);
-                //console.log(response.text[0]);
-            }
+        res.json({
+            'token': token,
+            'refresh token': token_refresh
+                // 'fotos': resp_item.data.pictures
+        });  
+        
+       
+        })
+        .catch((error) => {
+          console.log(error);
         });
+
+        
     }else{
         res.status(401).json({
             msg: 'No autorizado'
         });
         
     }
+
+
+        
+    //     apiInstance.getToken(opts, (error, data, response) => {
+    //         if (error) {
+    //             console.error(error);
+    //             res.json(error);
+    //         } else {
+    //             console.log('API called successfully.');
+    //             resp = response.text;
+    //             let token = resp.slice(17, -155)
+    //             let tokemRefresh = resp.slice(207, -2)
+    
+    //             res.json({
+    //                 'token': token,
+    //                 'refresh token': refreshToken
+    //                 // 'fotos': resp_item.data.pictures
+    //             });
+    //             // res.json(response);
+    //             //console.log(response.text[0]);
+    //         }
+    //     });
+    // }else{
+    //     res.status(401).json({
+    //         msg: 'No autorizado'
+    //     });
+        
+    // }
 
 };
 
@@ -87,36 +125,71 @@ const tokenrefresh =  async (req, res = response) => {
     llave = JSON.stringify(req.headers.llave);
     llave = llave.slice(1,-1);
     
-    console.log(process.env.REFRESH_TOKEN);
+    
     if (llave == process.env.LLAVE){
         
+
         let opts = {
-            'grantType': "refresh_token", // String | 
-            'clientId': "8554356626339314", // String | 
-            'clientSecret': "pNVTD6W6Bb1052H8in0Jbim4f2sBr1qD", // String | 
-            'redirectUri': 'https://mercadolibre.cl/', // String |  
-            'refreshToken': process.env.REFRESH_TOKEN // String | 
-        };
+            grant_type: "refresh_token", // String |
+            client_id: process.env.CLIENTID, // String |
+            client_secret: process.env.CLIENTSECRET, // String |
+            refresh_token: process.env.REFRESH_TOKEN, // String |
+          };
+
+        // let opts2 = {
+        //     'grantType': "refresh_token", // String | 
+        //     'clientId': process.env.CLIENTID, // String | 
+        //     'clientSecret': process.env.CLIENTSECRET, // String | 
+        //     'redirectUri': 'https://mercadolibre.cl/', // String |  
+        //     'refreshToken': process.env.REFRESH_TOKEN // String | 
+        // };
     
-        apiInstance.getToken(opts, (error, data, response) => {
-            if (error) {
-                console.error(error);
-                res.json(error);
-            } else {
-                // console.log('API called successfully.');
-                
-                resp = response.text;
-                let token = resp.slice(17, -155)
-                // console.log('aquiii token ' + token);
-                let tokenRefresh = resp.slice(207, -2)
-                
-                res.json({
-                    'token': token
-                    // 'fotos': resp_item.data.pictures
-                });
-                //console.log(response.text[0]);
-            }
+        const url = 'https://api.mercadolibre.com/oauth/token';
+  
+        const config = {
+          headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      };
+      
+      axios.post(url, new URLSearchParams(opts).toString(), config)
+        .then((response) => {
+         
+        token = response.data.access_token
+          //console.log(resp.slice(17, -155))
+          //let token = resp.slice(17, -155)
+        // console.log('aquiii token ' + token);
+          //let tokenRefresh = resp.slice(207, -2)
+        
+        res.json({
+            'token': token
+            // 'fotos': resp_item.data.pictures
         });
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+
+        // apiInstance.getToken(opts, (error, data, response) => {
+        //     if (error) {
+        //         console.error(error);
+        //         res.json(error);
+        //     } else {
+        //         // console.log('API called successfully.');
+                
+        //         resp = response.text;
+        //         let token = resp.slice(17, -155)
+        //         // console.log('aquiii token ' + token);
+        //         let tokenRefresh = resp.slice(207, -2)
+                
+        //         res.json({
+        //             'token': token
+        //             // 'fotos': resp_item.data.pictures
+        //         });
+        //         //console.log(response.text[0]);
+        //     }
+        // });
     }else{
         res.status(401).json({
             msg: 'No autorizado'

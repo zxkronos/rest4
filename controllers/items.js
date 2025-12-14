@@ -1,11 +1,160 @@
 const { response, request } = require('express');
 const axios = require('axios');
+const interval = require('../interval');
+
+
+const revisarUnaOrden = async (req, res = response) =>{
+    
+    //orden_id = '/orders/2000005329692650'; 
+    const { orden_id } = req.params;
+    token = JSON.stringify(req.headers.token);
+    token = token?.slice(1,-1);
+    
+    estatus = 200; 
+    
+    let getOrden = 'https://api.mercadolibre.com/orders/'+orden_id;
+    console.log(getOrden);
+    const config = { 
+        headers: { Authorization: `Bearer ${token}` }
+    };
+    
+     
+    const resp_orden = await axios.get(getOrden,config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+        
+    });
+    //console.log(resp_orden);
+    //console.log(resp_orden.data.order_items[0].item.id);
+//console.log(resp_orden.data.tags);
+
+    //let envio = '';
+    let id_envio = ''
+    if(resp_orden.data.shipping.id){
+    id_envio = resp_orden.data.shipping.id.toString();
+  
+  }
+    
+    
+
+    let orden = {
+      id_orden: resp_orden.data.id, 
+      mlc: resp_orden.data.order_items[0].item.id,
+      titulo: resp_orden.data.order_items[0].item.title,
+      sku: resp_orden.data.order_items[0].item.seller_sku ?? '',
+      monto_venta: resp_orden.data.total_amount,
+      cargo_venta: resp_orden.data.order_items[0].sale_fee*resp_orden.data.order_items[0].quantity,
+      cantidad: resp_orden.data.order_items[0].quantity,
+      estado: resp_orden.data.status,
+      id_envio: id_envio,
+      canal_venta: resp_orden.data.context.channel,
+      fecha_creacion: resp_orden.data.date_closed,
+      nickname: resp_orden.data.buyer.nickname,
+      nombre: resp_orden.data.buyer.first_name+' '+resp_orden.data.buyer.last_name,
+      pack_id: resp_orden.data.pack_id ?? '',
+      token: token
+    }
+    //console.log(orden);
+    //return orden;
+
+    let getEnvio = 'https://api.mercadolibre.com/shipments/'+id_envio;
+        
+        
+      const resp_envio = await axios.get(getEnvio,config).
+      catch(err => {
+          // console.log('hola');
+          // console.log(err.response.data);
+          estatus = 404;
+          res.status(404).json({
+              msg: err.response.data
+          });
+          
+      });
+    
+      estado_envio = resp_envio.data.status;
+      subestado_envio = resp_envio.data.substatus;
+      id_orden = resp_envio.data.order_id;
+      let logistica = resp_envio.data.logistic_type;
+      let tipo_envio = '';
+      if(typeof logistica !== 'undefined'){
+        if(logistica === 'self_service'){
+          tipo_envio = "Flex";
+      }else if (logistica === 'cross_docking'){
+          tipo_envio = "Colecta";
+      }
+      }else{
+      tipo_envio = "Entrega en persona";
+      }
+      direccion = resp_envio.data.receiver_address.address_line;
+      ciudad_region = resp_envio.data.receiver_address.city.name+', '+resp_envio.data.receiver_address.state.name;
+      referencia = resp_envio.data.receiver_address.comment ?? '';
+      nombre = resp_envio.data.receiver_address.receiver_name ?? '';
+      //region = resp_envio.data.receiver_address.state.name;
+      //recibe = resp_envio.data.receiver_address.receiver_name;
+      let id_envio2 = resp_envio.data.id.toString();
+      let envio = {
+        id_envio:id_envio2,
+        id_orden: id_orden,
+        estado_envio:estado_envio,
+        subestado_envio:subestado_envio ?? '',
+        tipo_envio: tipo_envio,
+        direccion: direccion,
+        ciudad_region: ciudad_region,
+        referencia: referencia,
+        nombre: nombre
+      }
+      //console.log(envio);
+      
+
+    await axios.post('https://prod-08.brazilsouth.logic.azure.com:443/workflows/875c139c7b944307969236128033538d/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5bC0c2LhWPY_UfjylxKfS7rPjRq7zwr76i7nRE5fcpc', 
+        {
+            orden 
+       }).
+       catch(err => {
+           // console.log('hola');
+           // console.log(err.response.data);
+           estatus = 404;
+           res.status(404).json({
+               msg: err.response.data
+           });
+           
+       });;
+    
+       await axios.post('https://prod-21.brazilsouth.logic.azure.com:443/workflows/a88dd518be4a42ccbecb4370346f94fa/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3qwrDJxIng_U26DlfW5jCJjVkbBERgzXDb9JxEh6vvU', 
+        {
+            envio
+        }).
+        catch(err => {
+            // console.log('hola');
+            // console.log(err.response.data);
+            estatus = 404;
+            res.status(404).json({
+                msg: err.response.data
+            });
+            
+        });
+
+       if (estatus == 200) {
+        res.json({
+            
+            orden,
+            envio
+            
+        });
+
+    }
+}
 
 
 const itemGet =  async (req, res = response) => {
-
+    //token2 = 'APP_USR-8554356626339314-032618-0873364c0c89ab0a89b99db40035ccda-345930669'
     token = JSON.stringify(req.headers.token);
-    token = token.slice(1,-1);
+    token = token?.slice(1,-1);
     let pictures_url = []   
     const config = {
         headers: { Authorization: `Bearer ${token}` }
@@ -53,6 +202,19 @@ const itemGet =  async (req, res = response) => {
     let disponibilidad_stock = '';
     let item_relation = '';
     let cantidad_vendida = 0;
+    let cantidad  = 0;
+    let modelo = '';
+    let marca = '';
+    let linea = '';
+    let modelo_alfa= '';
+    let disco_ssd = '';
+    let disco_hdd = '';
+    let ram = '';
+    let tarjeta_video = '';
+    let proce= '';
+    let proce_modelo= ''
+    
+    
     // let fotos_var = [];
 
     //  sin variaciones, entran también publicaciones en catalogo
@@ -80,6 +242,32 @@ const itemGet =  async (req, res = response) => {
     // let getCategoria = 'https://api.mercadolibre.com/categories/'
     // getCategoria += resp_item.data.category_id;
     // let resp_cat = await axios.get(getCategoria);
+    for (atrib in resp_item.data.attributes) {
+        if (resp_item.data.attributes[atrib].id == 'LINE') {
+            linea = resp_item.data.attributes[atrib].value_name;
+        }
+        if (resp_item.data.attributes[atrib].id == 'ALPHANUMERIC_MODEL') {
+            modelo_alfa = resp_item.data.attributes[atrib].value_name;
+        }
+        if (resp_item.data.attributes[atrib].id == 'SSD_DATA_STORAGE_CAPACITY') {
+            disco_ssd = resp_item.data.attributes[atrib].value_name;
+        }
+        if (resp_item.data.attributes[atrib].id == 'HARD_DRIVE_STORAGE_CAPACITY') {
+            disco_hdd = resp_item.data.attributes[atrib].value_name;
+        }
+        if (resp_item.data.attributes[atrib].id == 'RAM_MEMORY') {
+            ram = resp_item.data.attributes[atrib].value_name;
+        }
+        if (resp_item.data.attributes[atrib].id == 'GRAPHIC_CARD') {
+            tarjeta_video = resp_item.data.attributes[atrib].value_name;
+        }
+        if (resp_item.data.attributes[atrib].id == 'PROCESSOR_LINE') {
+            proce = resp_item.data.attributes[atrib].value_name;
+        }
+        if (resp_item.data.attributes[atrib].id == 'PROCESSOR_MODEL') {
+            proce_modelo = resp_item.data.attributes[atrib].value_name;
+        }
+    }
 
     if (resp_item.data.variations.length > 0) {
         tieneVariacion = true;
@@ -154,9 +342,9 @@ const itemGet =  async (req, res = response) => {
 
             variaciones.push({
                 'id': id_variacion,
-                'sku': sku,
-                'gtin': gtin,
-                'color': color,
+                'sku': sku ?? '',
+                'gtin': gtin ?? '',
+                'color': color ?? '',
                 'cantidad': cantidad,
                 'catalog_id': catalog_id, //id de la publicacion en catalogo de mercado libre
                 'pictures_url': pictures_url,
@@ -165,11 +353,6 @@ const itemGet =  async (req, res = response) => {
             });
 
     }
-    sku ='';
-    gtin = '';
-    color = '';
-    catalog_id = '';
-    cantidad = '';
     
     
     }else{
@@ -211,20 +394,29 @@ const itemGet =  async (req, res = response) => {
         }
 
     }
+    let thumbnail = "https://http2.mlstatic.com/D_"+resp_item.data.thumbnail_id+"-I.jpg"
 
-
+    
     res.json({
         'id': resp_item.data.id,
         'titulo': resp_item.data.title,
-        'thumbnail': resp_item.data.secure_thumbnail,
-        'sku': sku,
-        'marca': marca,
-        'modelo': modelo,
-        'gtin': gtin,
+        'thumbnail': thumbnail,
+        'sku': sku ?? '',
+        'marca': marca ?? '',
+        'modelo': modelo ?? '',
+        'gtin': gtin ?? '',
+        'linea': linea ?? '',
+        'modelo_alfa': modelo_alfa ?? '',
+        'disco_ssd': disco_ssd ?? '',
+        'disco_hdd': disco_hdd ?? '',
+        'ram': ram ?? '',
+        'tarjeta_video': tarjeta_video ?? '',
+        'proce': proce ?? '',
+        'proce_modelo': proce_modelo ?? '',
         'categoria': resp_item.data.category_id,
         'cantidad': resp_item.data.available_quantity,
         'precio': resp_item.data.price,
-        'color': color,
+        'color': color ?? '',
         'fecha_creacion': resp_item.data.date_created,
         'fecha_actualizacion': resp_item.data.last_updated,
         'estatus': resp_item.data.status,
@@ -249,16 +441,6 @@ const itemGet =  async (req, res = response) => {
 }
 
 const refrescarCantidad = async (req, res) => {
-
-    token = JSON.stringify(req.headers.token);
-    token = token.slice(1,-1);
-    
-    const config = {
-        headers: { Authorization: `Bearer ${token}` }
-    };
-
-    const { mlc } = req.params;
-    let getItem = 'https://api.mercadolibre.com/items/'
     // const config = {
     //     headers: { Authorization: `Bearer ${tokens[0].token}` }
     // };
@@ -304,6 +486,50 @@ const refrescarCantidad = async (req, res) => {
     }
 }
 
+
+
+
+const getPackId = async (req, res) => {
+    token = JSON.stringify(req.headers.token);
+    token = token.slice(1,-1);
+    const { id} = req.params;
+    
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+
+    estatus = 200;
+    //console.log(token);
+    let resp_pack = await axios.get(`https://api.mercadolibre.com/packs/${id}`, config).
+    catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+    id_orden = resp_pack.data.orders[0].id;
+
+     
+        let resp2 = await axios.get(`https://api.mercadolibre.com/orders/${id_orden}`, config).
+        catch(err => {
+        // console.log('hola');
+        // console.log(err.response.data);
+        estatus = 404;
+        res.status(404).json({
+            msg: err.response.data
+        });
+    });
+       // console.log(resp2.data.shipping.id);
+    
+    if (estatus == 200){
+
+        res.json({
+            'id_envio':resp2.data.shipping.id
+        });
+    }
+}
 
 const modificarCantidad = async (req, res) => {
     token = JSON.stringify(req.headers.token);
@@ -755,8 +981,9 @@ const buscarEnvio = async (req, res = response) => {
             }
             pictures_url.push(picture);
         }
+        let thumbnail = "https://http2.mlstatic.com/D_"+resp_item.data.thumbnail_id+"-I.jpg"
         articulo.precio = resp_item.data.price;
-        articulo.thumbnail = resp_item.data.secure_thumbnail;
+        articulo.thumbnail = thumbnail;
         articulo.pictures = pictures_url;
         articulo.condition = resp_item.data.condition;
 
@@ -800,7 +1027,7 @@ const buscarEnvio = async (req, res = response) => {
             subestado = resp_envio.data.substatus
         }
 
-    
+        //console.log(resp_envio.data.id);
         res.json({
             'id': resp_envio.data.id,
             'estado': resp_envio.data.status,
@@ -812,6 +1039,12 @@ const buscarEnvio = async (req, res = response) => {
             'detalle_direccion':detalle_direccion,
             'envia': envia,
             'costo_orden': resp_envio.data.order_cost,
+            'date_shipped': resp_envio.data.status_history.date_shipped ?? '',
+            'date_returned': resp_envio.data.status_history.date_returned ?? '',
+            'date_delivered': resp_envio.data.status_history.date_returned ?? '',
+            'date_first_visit': resp_envio.data.status_history.date_first_visit ?? '',
+            'date_not_delivered': resp_envio.data.status_history.date_not_delivered ?? '',
+            'date_cancelled': resp_envio.data.status_history.date_cancelled ?? '',
             'items': items
         });
     }
@@ -944,7 +1177,542 @@ const buscarSku =  async (req, res = response) => {
         // 'fotos': resp_item.data.pictures
     });
 }
+const getOrderItem =  async (req, res = response) => {
+    //console.log("hola");
+    const { mlc,id_orden,token } = req.body;
+    //console.log(mlc, id_orden, token);
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
 
+    
+    let getItem = 'https://api.mercadolibre.com/items/'
+    
+
+
+    testMouseM170Catalogo = 'MLC605369288'
+    testMouseM170Normal = 'MLC487543221'
+    testMlc = testMouseM170Normal;
+    getItem += mlc+'?include_attributes=all' //item con variaciones
+    estatus = 200; 
+    const resp_item = await axios.get(getItem, config);
+    //console.log(resp_item);
+    if(resp_item.data.seller_id = 345930669){
+        userCorrecto = true
+    }else{
+        userCorrecto = false
+    }
+    //console.log(resp_item.data);
+
+    //esfalso = false
+    if (estatus == 200 && userCorrecto) {
+        
+    let sku = '';
+    let gtin = '';
+    let color = '';
+    let catalog_id = '';
+    let tieneVariacion =false;
+    let variaciones = []
+    let tipo_envio = '';
+    let disponibilidad_stock = 0;
+    let item_relation = '';
+    let cantidad_vendida = 0;
+    let modelo = '';
+    let linea = '';
+    let modelo_alfa= '';
+    let disco_ssd = '';
+    let disco_hdd = '';
+    let ram = '';
+    let tarjeta_video = '';
+    let proce= '';
+    let proce_modelo= ''
+    // let fotos_var = [];
+
+    //  sin variaciones, entran también publicaciones en catalogo
+    
+
+    cantidad_vendida= resp_item.data.sold_quantity;
+    //console.log(cantidad_vendida);
+    for (tag in resp_item.data.shipping.tags) {
+        if (resp_item.data.shipping.tags[tag] == 'self_service_out'){
+            tipo_envio = 'colecta';
+        }else if (resp_item.data.shipping.tags[tag] == 'self_service_in'){
+            tipo_envio = 'flex';
+        }
+    }
+    if (tipo_envio == ''){
+        for(sale_term in resp_item.data.sale_terms){
+            if (resp_item.data.sale_terms[sale_term].id == 'MANUFACTURING_TIME'){
+                disponibilidad_stock = resp_item.data.sale_terms[sale_term].value_name;
+            }
+        }
+        tipo_envio = 'colecta';
+    }
+
+    for (atrib in resp_item.data.attributes) {
+        
+    }
+
+
+    // let getCategoria = 'https://api.mercadolibre.com/categories/'
+    // getCategoria += resp_item.data.category_id;
+    // let resp_cat = await axios.get(getCategoria);
+
+    if (resp_item.data.variations.length > 0) {
+        tieneVariacion = true;
+        
+
+        for (atrib in resp_item.data.attributes) {
+            
+            if (resp_item.data.attributes[atrib].id == 'BRAND') {
+                marca = resp_item.data.attributes[atrib].value_name;
+            }
+            
+            if(resp_item.data.attributes[atrib].id == 'MODEL'){
+                modelo = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'LINE') {
+                linea = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'ALPHANUMERIC_MODEL') {
+                modelo_alfa = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'SSD_DATA_STORAGE_CAPACITY') {
+                disco_ssd = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'HARD_DRIVE_STORAGE_CAPACITY') {
+                disco_hdd = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'RAM_MEMORY') {
+                ram = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'GRAPHIC_CARD') {
+                tarjeta_video = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'PROCESSOR_LINE') {
+                proce = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'PROCESSOR_MODEL') {
+                proce_modelo = resp_item.data.attributes[atrib].value_name;
+            }
+    
+            
+        }
+
+        for (variation in resp_item.data.variations) {
+            let pictures_url = []
+            id_variacion = resp_item.data.variations[variation].id;
+            id_variacion = id_variacion.toString();
+            cantidad_vendida = resp_item.data.variations[variation].sold_quantity;
+            // color = resp_item.data.variations[0].attribute_combinations[0].value_name;   
+            
+            cantidad = resp_item.data.variations[variation].available_quantity;
+            for(atrib in resp_item.data.variations[variation].attributes){
+                if(resp_item.data.variations[variation].attributes[atrib].id == 'SELLER_SKU'){
+
+                    sku = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }else if(resp_item.data.variations[variation].attributes[atrib].id == 'GTIN'){
+
+                    gtin = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }
+                else if(resp_item.data.variations[variation].attributes[atrib].id == 'MAIN_COLOR'){
+
+                    color = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }
+                else if(resp_item.data.variations[variation].attributes[atrib].id == 'COLOR'){
+
+                    color = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }
+                
+                
+            
+                
+            }
+            for(atrib in resp_item.data.variations[variation].attribute_combinations){
+                if(resp_item.data.variations[variation].attribute_combinations[atrib].id == 'COLOR'){
+                    color = resp_item.data.variations[variation].attribute_combinations[atrib].value_name;
+                }
+            }
+
+
+
+           /* for (picture in resp_item.data.variations[variation].picture_ids) {
+                picture = resp_item.data.variations[variation].picture_ids[picture]
+                
+                pictures_url.push(picture);
+            }*/
+        
+            if( resp_item.data.variations[variation].item_relations?.length >0){
+                item_relation = resp_item.data.variations[variation].item_relations[0].id;
+            }
+
+            if (resp_item.data.variations[variation].catalog_product_id){
+                catalog_id = resp_item.data.variations[variation].catalog_product_id;
+            }
+
+            if(gtin == null){
+                gtin = ''
+            }
+
+            variaciones.push({
+                'id': id_variacion,
+                'sku': sku,
+                'gtin': gtin,
+                'color': color,
+                'cantidad': cantidad,
+                'catalog_id': catalog_id, //id de la publicacion en catalogo de mercado libre
+                //'pictures_url': pictures_url,
+                'item_relation': item_relation
+
+            });
+
+    }
+    /*sku ='';
+    gtin = '';
+    color = '';
+    catalog_id = '';
+    cantidad = '';*/
+    
+    
+    
+    }else{
+        tieneVariacion = false;
+        for (atrib in resp_item.data.attributes) {
+            // console.log('atrib');
+            if (resp_item.data.attributes[atrib].id == 'SELLER_SKU') { //sacara el sku y gtin en caso que no tenga variaciones
+                sku = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'BRAND') {
+                marca = resp_item.data.attributes[atrib].value_name;
+            }
+            
+            if(resp_item.data.attributes[atrib].id == 'MODEL'){
+                modelo = resp_item.data.attributes[atrib].value_name;
+            }
+            if(resp_item.data.attributes[atrib].id == 'GTIN'){ //codigo universal de producto
+                gtin = resp_item.data.attributes[atrib].value_name;
+            }
+            if(resp_item.data.attributes[atrib].id == 'COLOR'){
+                color = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'LINE') {
+                linea = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'ALPHANUMERIC_MODEL') {
+                modelo_alfa = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'SSD_DATA_STORAGE_CAPACITY') {
+                disco_ssd = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'HARD_DRIVE_STORAGE_CAPACITY') {
+                disco_hdd = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'RAM_MEMORY') {
+                ram = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'GRAPHIC_CARD') {
+                tarjeta_video = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'PROCESSOR_LINE') {
+                proce = resp_item.data.attributes[atrib].value_name;
+            }
+            if (resp_item.data.attributes[atrib].id == 'PROCESSOR_MODEL') {
+                proce_modelo = resp_item.data.attributes[atrib].value_name;
+            }
+            
+        }
+        
+        if (resp_item.data.catalog_product_id){
+            catalog_id = resp_item.data.catalog_product_id;
+        }
+ 
+        if(resp_item.data.item_relations?.length > 0){
+            // console.log('in en sin variacion');
+            item_relation = resp_item.data.item_relations[0].id;
+        }
+
+        /*for (picture in resp_item.data.pictures) {
+            picture = resp_item.data.pictures[picture].id
+            
+            pictures_url.push(picture);
+        }*/
+    
+    }
+    if (disponibilidad_stock != 0){
+      disponibilidad_stock = disponibilidad_stock.substring(0,1);
+      //console.log(disponibilidad_stock[0]);
+    }
+
+    titulo = resp_item.data.title;
+    if(titulo.length > 100){
+      titulo = titulo.slice(0,100);
+    }
+
+    let thumbnail = "https://http2.mlstatic.com/D_"+resp_item.data.thumbnail_id+"-I.jpg"
+    //"http://http2.mlstatic.com/D_609515-MLU54959919049_042023-I.jpg",
+
+    let item = {'id': resp_item.data.id,
+    'titulo': titulo,
+    'thumbnail': thumbnail,
+    'sku': sku,
+    'marca': marca ?? '',
+    'modelo': modelo ?? '',
+    'gtin': gtin,
+    'linea': linea ?? '',
+    'modelo_alfa': modelo_alfa ?? '',
+    'disco_ssd': disco_ssd ?? '',
+    'disco_hdd': disco_hdd ?? '',
+    'ram': ram ?? '',
+    'tarjeta_video': tarjeta_video ?? '',
+    'proce': proce ?? '',
+    'proce_modelo': proce_modelo ?? '',
+    'categoria': resp_item.data.category_id,
+    'cantidad': resp_item.data.available_quantity,
+    'precio': resp_item.data.price,
+    'color': color,
+    'fecha_creacion': resp_item.data.date_created,
+    'fecha_actualizacion': resp_item.data.last_updated,
+    'estatus': resp_item.data.status,
+    'condicion': resp_item.data.condition,
+    'catalog_id': catalog_id,
+    'tieneVariacion': tieneVariacion,
+    'catalog_listing': resp_item.data.catalog_listing, //si es catalogo o no
+    'disponibilidad_stock': disponibilidad_stock,
+    'tipo_envio': tipo_envio,
+    'item_relation': item_relation,
+    'sold_quantity': cantidad_vendida,
+    'id_orden': id_orden,
+    'variaciones': variaciones }
+    
+    res.json({
+          item
+        })
+        //'pictures': pictures_url,
+    
+        
+
+        // 'fotos': resp_item.data.pictures
+    }else{
+        res.status(404).json({
+            msg: 'usuario incorrecto'
+        });
+    }
+   /* res.json({
+        'id': resp_item.data.id,
+        'titulo': resp_item.data.title,
+        'thumbnail': resp_item.data.secure_thumbnail,
+        'sku': sku ?? '',
+        'marca': marca ?? '',
+        'modelo': modelo ?? '',
+        'gtin': gtin ?? '',
+        'categoria': resp_item.data.category_id,
+        'cantidad': resp_item.data.available_quantity,
+        'precio': resp_item.data.price,
+        'color': color ?? '',
+        'fecha_creacion': resp_item.data.date_created,
+        'fecha_actualizacion': resp_item.data.last_updated,
+        'estatus': resp_item.data.status,
+        'condicion': resp_item.data.condition,
+        'catalog_id': catalog_id,
+        'pictures': pictures_url,
+        'variaciones': variaciones,
+        'tieneVariacion': tieneVariacion,
+        'catalog_listing': resp_item.data.catalog_listing, //si es catalogo o no
+        'disponibilidad_stock': disponibilidad_stock,
+        'tipo_envio': tipo_envio,
+        'item_relation': item_relation,
+        'sold_quantity': cantidad_vendida
+
+        // 'fotos': resp_item.data.pictures
+    });
+}else{
+    res.status(404).json({
+        msg: 'usuario incorrecto'
+    });
+}*/
+   // return item;
+}
+
+const updateOrdenItem =  async (req, res = response) => {
+
+
+    const { mlc,id_orden,token } = req.body;
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+
+    
+    let getItem = 'https://api.mercadolibre.com/items/'
+    
+
+
+    testMouseM170Catalogo = 'MLC605369288'
+    testMouseM170Normal = 'MLC487543221'
+    testMlc = testMouseM170Normal;
+    getItem += mlc+'?include_attributes=all' //item con variaciones
+    estatus = 200; 
+    const resp_item = await axios.get(getItem, config);
+
+    if(resp_item.data.seller_id = 345930669){
+        userCorrecto = true
+    }else{
+        userCorrecto = false
+    }
+    
+    if (estatus == 200 && userCorrecto) {
+    
+    let color = '';
+    
+    let tieneVariacion =false;
+    
+    let modelo = '';
+    
+    
+
+    
+    
+    
+    if (resp_item.data.variations.length > 0) {
+        tieneVariacion = true;
+        
+
+        for (atrib in resp_item.data.attributes) {
+           
+            if(resp_item.data.attributes[atrib].id == 'MODEL'){
+                modelo = resp_item.data.attributes[atrib].value_name;
+            }
+        }
+
+        for (variation in resp_item.data.variations) {
+        
+            // color = resp_item.data.variations[0].attribute_combinations[0].value_name;   
+            
+            cantidad = resp_item.data.variations[variation].available_quantity;
+            for(atrib in resp_item.data.variations[variation].attributes){
+                
+                if(resp_item.data.variations[variation].attributes[atrib].id == 'COLOR'){
+
+                    color = resp_item.data.variations[variation].attributes[atrib].value_name; 
+                }
+                
+                
+            }
+            for(atrib in resp_item.data.variations[variation].attribute_combinations){
+                if(resp_item.data.variations[variation].attribute_combinations[atrib].id == 'COLOR'){
+                    color = resp_item.data.variations[variation].attribute_combinations[atrib].value_name;
+                }
+            }     
+
+    }
+    
+    }else{
+        tieneVariacion = false;
+        for (atrib in resp_item.data.attributes) {
+            
+            if(resp_item.data.attributes[atrib].id == 'MODEL'){
+                modelo = resp_item.data.attributes[atrib].value_name;
+            }
+            if(resp_item.data.attributes[atrib].id == 'COLOR'){
+                color = resp_item.data.attributes[atrib].value_name;
+            }
+    
+            
+        }
+
+    
+    }
+    
+    let item = {
+        
+        'id': resp_item.data.id,
+        'thumbnail': resp_item.data.secure_thumbnail,
+        'modelo': modelo ?? '',
+        'color': color,
+        'condicion': resp_item.data.condition,
+        'id_orden': id_orden,
+        
+        //'pictures': pictures_url,
+        
+        
+        
+
+        // 'fotos': resp_item.data.pictures
+    }
+    //console.log(item);
+
+    res.json({
+        'item': item
+    });
+}
+}
+
+const updateOrdenEnvio =  async (req, res = response) => {
+
+    const { id_envio,id_orden,token } = req.body;
+    
+
+    
+    
+
+    let getEnvio = 'https://api.mercadolibre.com/shipments/'+id_envio;
+    const config = { 
+        headers: { Authorization: `Bearer ${token}` }
+  };
+    
+  const resp_envio = await axios.get(getEnvio,config);
+
+  estado_envio = resp_envio.data.status;
+  subestado_envio = resp_envio.data.substatus;
+  //id_orden = resp_envio.data.order_id;
+  let logistica = resp_envio.data.logistic_type;
+  let tipo_envio = '';
+  if(typeof logistica !== 'undefined'){
+    if(logistica === 'self_service'){
+      tipo_envio = "Flex";
+  }else if (logistica === 'cross_docking'){
+      tipo_envio = "Colecta";
+  }
+  }else{
+  tipo_envio = "Entrega en persona";
+  }
+  direccion = resp_envio.data.receiver_address.address_line;
+  ciudad_region = resp_envio.data.receiver_address.city.name+', '+resp_envio.data.receiver_address.state.name;
+  referencia = resp_envio.data.receiver_address.comment;
+  //region = resp_envio.data.receiver_address.state.name;
+  //recibe = resp_envio.data.receiver_address.receiver_name;
+
+  let envio = {
+    id_envio:resp_envio.data.id,
+    id_orden: id_orden,
+    estado_envio:estado_envio,
+    subestado_envio:subestado_envio ?? '',
+    tipo_envio: tipo_envio,
+    direccion: direccion,
+    ciudad_region: ciudad_region,
+    referencia: referencia ?? '',
+    date_shipped: resp_envio.data.status_history.date_shipped ?? '',
+    date_returned: resp_envio.data.status_history.date_returned ?? '',
+    date_delivered: resp_envio.data.status_history.date_returned ?? '',
+    date_first_visit: resp_envio.data.status_history.date_first_visit ?? '',
+    date_not_delivered: resp_envio.data.status_history.date_not_delivered ?? '',
+    date_cancelled: resp_envio.data.status_history.date_cancelled ?? ''
+  }
+  //console.log(envio);
+  
+  res.json({
+    'item': envio
+});
+}
+
+const updateOrden =  async (req, res = response) => {
+    const { mlc_items,id_envios } = req.body;
+    splitItems= mlc_items.split(",");
+    splitEnvios = id_envios.split(",");
+    await interval.actualizarOrden(splitItems,splitEnvios);
+    res.json({
+        'hola':"hola"
+    })
+}
 
 module.exports = {
     itemGet,
@@ -955,5 +1723,12 @@ module.exports = {
     modificarSku,
     disponibilidadStock,
     refrescarCantidad,
-    modificarPrecio
+    modificarPrecio,
+    updateOrdenItem,
+    getOrderItem,
+    updateOrden,
+    updateOrdenEnvio,
+    getPackId,
+    revisarUnaOrden
+
 }
